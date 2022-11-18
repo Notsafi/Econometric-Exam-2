@@ -1,0 +1,181 @@
+---
+title: "Econometric Exam 2"
+author: "Safinaz Ali"
+date: "11/17/2022"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+load("~/Desktop/ATUS_18192021.RData")
+
+#QUESTION 1
+#a
+pnorm(-0.45, mean=-4, sd=8.9, lower.tail = FALSE) 
+#b
+pnorm(2.56, mean=-8, sd=3.2)*2
+#c
+qnorm(.126/2,3,7.2, lower.tail = TRUE) 
+qnorm(.126/2,3,7.2, lower.tail = FALSE)
+#d
+2*pt(q= 2.4, df=32, lower.tail=FALSE) 
+#e
+2*pt(q= -0.4, df=11, lower.tail=FALSE) 
+
+load("~/Desktop/ATUS_18192021.RData")
+
+
+#QUESTION 4
+summary(dat_ATUS)
+kids <- subset(dat_ATUS, (dat_ATUS$HH_NUMKIDS > 1)) 
+summary(dat_ATUS)
+
+#For this subset i looked into how many kids a person has beacause usually the more kids you have the more time you will spend looking after them 
+
+#question 5
+
+restrict1 <-(dat_ATUS$HH_NUMKIDS < 12) & (dat_ATUS$SEX == "Male") 
+data_new1 <- subset(dat_ATUS,restrict1) 
+t.test(restrict1)
+sd(restrict1)
+summary(data_new1$SEX) #SUMMARY:45.56%
+prop.table(summary(data_new1$HH_NUMKIDS), margin = NULL)
+
+restrict2 <-(dat_ATUS$HH_NUMKIDS < 12) & (dat_ATUS$SEX == "Female") 
+data_new2 <- subset(dat_ATUS,restrict2) 
+t.test(restrict2)
+sd(restrict2)
+summary(data_new2$SEX) #SUMMARY:54.43%
+prop.table(summary(data_new2$HH_NUMKIDS), margin = NULL)
+
+#Based on these two restricts you can clearly see that women have more kids or essentially are the guardian of their kids then male are. Which is usually true
+
+#Question 6
+summary(dat_ATUS)
+dat_ATUS$care <-(dat_ATUS$ACT_CAREHH > 1)
+summary(dat_ATUS)
+#Above is a binary formula to help later when i run the glm model or to help differentiate 
+
+model1 <- lm(care ~ AGE + SEX + EMPSTAT , data = kids)
+summary(model1)
+
+#A in this regression i have care as a binary to help me compare an age group, sex and marital status.i chos ethese variables because sex will help us differentiate THE DIFFERENT SEX BETWEEN IT AND IT IS ALSO OUR exogenous factor with age as well since they can not be change and would not affect the other variables. I also included employment to see whether or not if people who care for kids more are employed or not. estimates do make it plasuiable because as your age increase causes you to spend more time with kids and if your not working you spend more time wit them so the positive number are the plausible estimate since they play a factor
+
+#B We know they are statistically significant based on the stars because of the confidence interval. so the pvalue must be lower then significance level to say its significant. Specifcially age sex and marital status is significant while employment is not however specifically not in labor force does play a factor. They do seem plasuible becase based on age the other you get the more time you will spend taking care of kids. 
+
+#C null hypothesis is there is no relationship between the independent and dependent varibale and alternative hypothesis is there is a relationship. essentially we can see that based on the OLS regression f statistic pvale we can sayso we reject the null hypothesis because there is a relationship between the independnet variable and dependent variable because the f statistic pvalue is lower than all the significance level so the joint test is not all zero  
+
+to_be_predicted2 <- data.frame(AGE = 20:55, SEX = "Female", EMPSTAT = "Employed - at work") 
+to_be_predicted2$yhat <- predict(model1, newdata = to_be_predicted2, type= "response")
+summary(to_be_predicted2$yhat)
+
+#D according to this predicted factor it is showing that a person taht is between the age 20 and 55 who is a female and married to their spouce and is employed takes care of their kids for aroun d 74 hours a week i will asume
+
+#E the type 1 error is 201  and the type two error is 578 based on the output.  It can predict the train data accurately.It correctly predicts 68% of the train data.
+set.seed(1)
+index<-sample(x=2,size=nrow(kids),replace=TRUE,prob=c(0.7,0.3))
+train<-kids[index==1,]
+test<-kids[index==2,]
+trainmodel<-lm(care ~ AGE + SEX + MARST + EMPSTAT , data = kids)
+prob<-predict(object=trainmodel,newdata=test,type="response")
+pred<-cbind(test,prob)
+pred<-transform(pred,predict=ifelse(prob<=0.5,0,1))
+ta<-table(pred$care,pred$predict)
+ta
+sum_diag<-sum(diag(ta))
+sum<-sum(ta)
+sum_diag/sum
+
+
+#QUESTION 7
+summary(dat_ATUS)
+dat_ATUS$any_t_care <-(dat_ATUS$ACT_CAREHH > 1)
+summary(dat_ATUS)
+
+
+model_logit1 <- glm(any_t_care ~ AGE + SEX + EMPSTAT , data = kids, family= binomial)
+summary(model_logit1)
+
+#equation for f statistic if you dont get it in the regression
+# null deviance - residual deviance, null deviance DF - Residual deviance DF 
+pchisq(10056-9644, 7785-7779)
+#The p-value turns out to be 1. Since this p-value is greater than 0.05, we fail to reject the null hypothesis. This means we do not have sufficient evidence to say that the true distribution of customers is different from the distribution that the shop owner claimed. There is no joint significance
+
+to_be_predicted3 <- data.frame(AGE = 20:55, SEX = "Female", EMPSTAT = "Employed - at work")
+to_be_predicted3$yhat <- predict(model_logit1, newdata = to_be_predicted3, type= "response")
+summary(to_be_predicted3$yhat)
+# Based on the model we can see that with all those variables there will spend an avergae of 77 hours a week caring for their kids 
+
+
+#The type 1 error is 45 and type 2 error for this is 697. .It correctly predicts 69% of the train data.
+set.seed(1)
+index<-sample(x=2,size=nrow(kids),replace=TRUE,prob=c(0.7,0.3))
+train<-kids[index==1,]
+test<-kids[index==2,]
+trainmodel<-glm(any_t_care ~ AGE + SEX + EMPSTAT , data = kids, family= binomial)
+prob<-predict(object=trainmodel,newdata=test,type="response")
+pred<-cbind(test,prob)
+pred<-transform(pred,predict=ifelse(prob<=0.5,0,1))
+ta<-table(pred$any_t_care,pred$predict)
+ta
+sum_diag<-sum(diag(ta))
+sum<-sum(ta)
+sum_diag/sum
+
+#question 8
+
+require(pROC)
+roc_curve<-roc(test$care,prob)
+x<-1-roc_curve$specificities
+y<-roc_curve$sensitivities
+plot(x=x,y=y,xlim=c(0,1),ylim=c(0,1),xlab="1-specificity",
+     ylab="sensitivity",main="ROC Curve",type="l",lwd=2)
+abline(a=0,b=1,col="grey")
+auc<-roc_curve$auc
+text(0.5,0.4,paste("AUC",round(auc,digits=2)),col="blue")
+
+#The y axis isshows the rate of true positive while the x axis shows the rate of false postives. In which this case our line goes is greater then linear line representated showing we have true positoves since its morE then 50% as it is 70% 
+
+
+#another regression
+model_logit1 <- glm(care ~ AGE + SEX + EMPSTAT , data = kids, family= binomial)
+summary(model_logit1)
+summary(model_logit1$fitted)
+summary(kids$fulltime)
+pred_model_logit1 <- (model_logit1$fitted > 0.5)
+table(pred_model_logit1, kids$care)
+frac_correct_l1a <- mean(as.numeric(as.numeric(pred_model_logit1) == kids$care))
+pred_model_logit1b <- (model_logit1$fitted > mean(kids$care))
+table(pred_model_logit1b, kids$care)
+frac_correct_l1b <- mean(as.numeric(as.numeric(pred_model_logit1b) == kids$care))
+frac_correct_try <- rep(0,140)
+for (indx in 1:140) {
+  pred_model_indx <- (model_logit1$fitted > (indx/200) )
+  frac_correct_try[indx] <- mean(as.numeric(as.numeric(pred_model_indx) == kids$care))
+}
+plot((seq(140)/200),frac_correct_try)
+#confidence level of 0.5 has a 65% accuracy of predicting the model
+
+#Clearly this model gave me a less of an accurate result then the pRoc predictive mode.However it was very similar  
+
+
+
+```
+
+
+```{r}
+
+```
+
+
